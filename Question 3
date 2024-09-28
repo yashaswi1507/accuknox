@@ -1,0 +1,39 @@
+Question 3: By default do django signals run in the same database transaction as the caller? Please support your answer with a code snippet that conclusively proves your stance. The code does not need to be elegant and production ready, we just need to understand your logic.
+Answer: Yes, by default, Django signals run in the same database transaction as the caller. This means that if the transaction is rolled back, the actions within the signal handler are also rolled back.
+
+Code: 1. models.py:
+from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+class MyModel(models.Model):
+    name = models.CharField(max_length=100)
+
+class MyLog(models.Model):
+    message = models.CharField(max_length=100)
+
+@receiver(post_save, sender=MyModel)
+def my_handler(sender, instance, **kwargs):
+    MyLog.objects.create(message=f"Log entry for {instance.name}")
+
+2. views.py:
+from django.shortcuts import render
+from django.http import HttpResponse
+from django.db import transaction
+from .models import MyModel, MyLog
+
+def my_view(request):
+    try:
+        with transaction.atomic():
+            instance = MyModel.objects.create(name="Test Instance")
+            # Force an error to roll back the transaction
+            raise Exception("Something went wrong!")
+    except:
+        pass
+
+    # Check if the log entry exists
+    log_exists = MyLog.objects.filter(message="Log entry for Test Instance").exists()
+    return HttpResponse(f"Log entry exists: {log_exists}")
+
+3. Run Server:
+Log entry exists: False
