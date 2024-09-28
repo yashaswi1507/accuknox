@@ -1,0 +1,30 @@
+Question 1: By default are django signals executed synchronously or asynchronously? Please support your answer with a code snippet that conclusively proves your stance. The code does not need to be elegant and production ready, we just need to understand your logic.
+Answer: By default, Django signals are executed synchronously. This means that when a signal is sent, all connected receivers are called immediately, in the same thread, and the main process will wait for all receivers to complete before moving on. 
+
+Code: 1. models.py:
+from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+import time
+
+class MyModel(models.Model):
+    name = models.CharField(max_length=100)
+
+@receiver(post_save, sender=MyModel)
+def my_handler(sender, instance, **kwargs):
+    print("Signal received for instance:", instance)
+    time.sleep(5)  # Simulate a long-running task
+    print("Handler done processing.")
+
+2. view.py:
+from django.shortcuts import render
+from django.http import HttpResponse
+from .models import MyModel
+
+def my_view(request):
+    instance = MyModel.objects.create(name="Test Instance")
+    return HttpResponse("Instance created!")
+
+3. Run Server:
+Signal received for instance: MyModel object (1)
+Handler done processing.
